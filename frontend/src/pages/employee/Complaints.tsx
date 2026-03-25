@@ -53,9 +53,12 @@ export default function Complaints() {
   };
 
   return (
-    <div className="space-y-6 pt-4 animate-in fade-in">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Complaints</h1>
+    <div className="space-y-6 animate-in fade-in">
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Complaints</h1>
+          <p className="text-muted-foreground text-sm">Raise issues and track their resolution status.</p>
+        </div>
         <Button onClick={() => setIsFormOpen(!isFormOpen)}>
           <Plus className="mr-2 h-4 w-4" /> New Complaint
         </Button>
@@ -118,10 +121,16 @@ export default function Complaints() {
                     <div className="flex justify-between items-start">
                         <div>
                             <CardTitle className="text-lg">{c.title}</CardTitle>
-                            <p className="text-xs text-muted-foreground mt-1">{format(new Date(c.created_at), 'PPP')}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{format(new Date(c.created_at + 'Z'), 'PPP p')}</p>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                            <span className="text-xs px-2 py-1 rounded bg-muted uppercase font-medium">{c.status}</span>
+                                {(() => {
+                                  const s = c.status;
+                                  if (s === 'resolved') return <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 uppercase font-bold">Resolved</span>;
+                                  if (s === 'in_review') return <span className="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700 uppercase font-bold">In Review</span>;
+                                  if (s === 'closed') return <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground uppercase font-bold">Closed</span>;
+                                  return <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 uppercase font-bold">Open</span>;
+                                })()}
                             <span className={`text-xs px-2 py-1 rounded capitalize font-medium ${c.priority === 'high' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{c.priority} priority</span>
                         </div>
                     </div>

@@ -8,10 +8,15 @@ import {
   User,
   X,
   LogOut,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Bell,
+  ClipboardList
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
+import logo from '@/assets/yasianlogo.png';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -22,18 +27,34 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuthStore();
   const isAdmin = user?.role === 'admin';
 
-  const employeeLinks = [
+  const { data: notifications } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const { data } = await api.get('/notifications/me');
+      return data;
+    },
+    enabled: !isAdmin && !!user
+  });
+
+  const unreadCount = notifications?.length || 0;
+
+  type NavItem = { to: string; icon: any; label: string; badge?: number };
+
+  const employeeLinks: NavItem[] = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/report/new', icon: FileText, label: 'Daily Report' },
     { to: '/reports', icon: Files, label: 'My Reports' },
     { to: '/complaints', icon: MessageSquare, label: 'Complaints' },
+    { to: '/notifications', icon: Bell, label: 'Notifications', badge: unreadCount },
   ];
 
-  const adminLinks = [
+  const adminLinks: NavItem[] = [
     { to: '/admin', icon: LayoutDashboard, label: 'Admin Board' },
     { to: '/admin/employees', icon: Users, label: 'Employees' },
     { to: '/admin/reports', icon: Files, label: 'All Reports' },
     { to: '/admin/complaints', icon: MessageSquare, label: 'All Complaints' },
+    { to: '/admin/surveys', icon: ClipboardList, label: 'Surveys' },
+    { to: '/admin/notifications', icon: Bell, label: 'Send Alert' },
     { to: '/admin/settings', icon: SettingsIcon, label: 'Settings' },
   ];
 
@@ -57,10 +78,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         <div className="flex items-center justify-between h-16 px-6">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
-              <span className="text-white font-bold text-lg">W</span>
-            </div>
-            <span className="text-xl font-bold tracking-tight text-foreground">WorkReport</span>
+            <img src={logo} alt="Yasian Logo" className="h-8 object-contain" />
           </div>
           <button onClick={onClose} className="md:hidden text-muted-foreground hover:bg-muted p-1 rounded-md transition-colors">
             <X size={20} />
@@ -75,14 +93,21 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               to={link.to}
               onClick={() => onClose()}
               className={({ isActive }) => cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group",
+                "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all group",
                 isActive 
                   ? "bg-primary/10 text-primary" 
                   : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
               )}
             >
-              <link.icon size={18} className={cn("transition-colors", "group-hover:text-primary")} />
-              <span>{link.label}</span>
+              <div className="flex items-center gap-3">
+                <link.icon size={18} className={cn("transition-colors", "group-hover:text-primary")} />
+                <span>{link.label}</span>
+              </div>
+              {link.badge !== undefined && link.badge > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                  {link.badge}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

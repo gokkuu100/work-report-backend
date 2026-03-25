@@ -11,8 +11,9 @@ class ComplaintPriority(str, enum.Enum):
 
 class ComplaintStatus(str, enum.Enum):
     open = "open"
-    in_progress = "in_progress"
+    in_review = "in_review"
     resolved = "resolved"
+    closed = "closed"
 
 class Complaint(Base):
     __tablename__ = "complaints"

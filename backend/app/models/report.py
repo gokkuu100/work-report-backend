@@ -25,4 +25,4 @@ class Report(Base):
     )
 
     user = relationship("User", back_populates="reports")
-    attachments = relationship("Attachment", back_populates="report", cascade="all, delete-orphan")
+    attachments = relationship("Attachment", back_populates="report", cascade="all, delete-orphan", lazy="selectin")

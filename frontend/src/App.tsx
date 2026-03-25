@@ -7,11 +7,14 @@ import DailyReport from '@/pages/employee/DailyReport'
 import MyReports from '@/pages/employee/MyReports'
 import Complaints from '@/pages/employee/Complaints'
 import Profile from '@/pages/employee/Profile'
+import Notifications from '@/pages/employee/Notifications'
 import AdminDashboard from '@/pages/admin/AdminDashboard'
 import Employees from '@/pages/admin/Employees'
 import AllReports from '@/pages/admin/AllReports'
 import AllComplaints from '@/pages/admin/AllComplaints'
 import Settings from '@/pages/admin/Settings'
+import SendNotification from '@/pages/admin/SendNotification'
+import Surveys from '@/pages/admin/Surveys'
 
 function App() {
   const { token, user } = useAuthStore()
@@ -37,6 +40,7 @@ function App() {
            <Route path="report/new" element={<DailyReport />} />
            <Route path="reports" element={<MyReports />} />
            <Route path="complaints" element={<Complaints />} />
+           <Route path="notifications" element={<Notifications />} />
            <Route path="profile" element={<Profile />} />
            
            {/* Admin Routes */}
@@ -44,7 +48,9 @@ function App() {
            <Route path="admin/employees" element={<RequireAdmin><Employees /></RequireAdmin>} />
            <Route path="admin/reports" element={<RequireAdmin><AllReports /></RequireAdmin>} />
            <Route path="admin/complaints" element={<RequireAdmin><AllComplaints /></RequireAdmin>} />
+           <Route path="admin/surveys" element={<RequireAdmin><Surveys /></RequireAdmin>} />
            <Route path="admin/settings" element={<RequireAdmin><Settings /></RequireAdmin>} />
+           <Route path="admin/notifications" element={<RequireAdmin><SendNotification /></RequireAdmin>} />
         </Route>
       </Routes>
     </BrowserRouter>

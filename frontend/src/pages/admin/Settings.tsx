@@ -56,7 +56,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in py-6 max-w-2xl">
+    <div className="space-y-6 animate-in fade-in max-w-2xl">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
             <SettingsIcon className="w-8 h-8 text-primary" /> System Settings

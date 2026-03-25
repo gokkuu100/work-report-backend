@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str
     
     MINIO_ENDPOINT: str
+    MINIO_PUBLIC_ENDPOINT: str = "localhost:9000"
     MINIO_ACCESS_KEY: str
     MINIO_SECRET_KEY: str
     MINIO_BUCKET_NAME: str

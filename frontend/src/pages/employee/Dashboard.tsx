@@ -1,13 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { FileText, Files, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { FileText, Files, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, XCircle, Bell } from 'lucide-react';
 import { format, isFuture, isToday } from 'date-fns';
 import { useAuthStore } from '@/store/auth';
 
 export default function Dashboard() {
   const { user } = useAuthStore();
-  const { data: reports, isLoading } = useQuery({
+  const queryClient = useQueryClient();
+  
+  const { data: reports, isLoading: rLoading } = useQuery({
     queryKey: ['my-reports'],
     queryFn: async () => {
       const { data } = await api.get('/reports/me');
@@ -15,10 +19,28 @@ export default function Dashboard() {
     }
   });
 
+  const { data: notifications } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const { data } = await api.get('/notifications/me');
+      return data;
+    }
+  });
+
+  const dismissMutation = useMutation({
+      mutationFn: async (id: number) => {
+          await api.post(`/notifications/${id}/read`);
+      },
+      onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      }
+  });
+
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const submittedToday = reports?.some((r: any) => r.date === todayStr);
 
-  const currentDate = new Date();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -26,6 +48,9 @@ export default function Dashboard() {
 
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const blanks = Array.from({ length: firstDayOfMonth }, (_, i) => i);
+
+  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
   const getDayStatus = (day: number) => {
       const dateStr = format(new Date(year, month, day), 'yyyy-MM-dd');
@@ -38,11 +63,35 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in py-6">
+    <div className="space-y-6 animate-in fade-in">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Welcome back, {user?.name?.split(' ')[0] || 'User'}!</h1>
         <p className="text-muted-foreground text-sm">Here is a quick overview of your activities today.</p>
       </div>
+
+      {notifications && notifications.length > 0 && (
+        <div className="space-y-3">
+          {notifications.map((n: any) => (
+            <div key={n.id} className="flex gap-4 p-4 bg-blue-50/50 border border-blue-100 rounded-xl text-blue-900 shadow-sm items-start relative overflow-hidden group">
+                <div className="shrink-0 mt-0.5 bg-blue-100 p-2 rounded-full">
+                    <Bell className="w-4 h-4 text-blue-600 inline-block" />
+                </div>
+                <div className="space-y-1 flex-1 pr-8">
+                    <p className="text-sm font-medium leading-relaxed">{n.message}</p>
+                    <p className="text-[11px] text-blue-600/70 font-semibold uppercase tracking-wider">{format(new Date(n.created_at + 'Z'), 'MMM do, h:mm a')}</p>
+                </div>
+                <button 
+                  onClick={() => dismissMutation.mutate(n.id)}
+                  disabled={dismissMutation.isPending}
+                  className="absolute right-3 top-3 px-3 py-1.5 bg-white/60 hover:bg-blue-100 rounded-full transition-colors text-blue-600 border border-blue-200 text-[10px] font-bold uppercase tracking-wide shadow-sm"
+                  title="Mark as read"
+                >
+                    Mark as read
+                </button>
+            </div>
+          ))}
+        </div>
+      )}
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="relative overflow-hidden group">
@@ -89,13 +138,19 @@ export default function Dashboard() {
 
         <Card className="overflow-hidden shadow-sm">
             <CardHeader className="bg-muted/10 border-b pb-4">
-                <CardTitle className="text-base flex items-center gap-2">
-                    <CalendarIcon className="w-5 h-5 text-primary" />
-                    {format(currentDate, 'MMMM yyyy')}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <CalendarIcon className="w-5 h-5 text-primary" />
+                        {format(currentDate, 'MMMM yyyy')}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={prevMonth}>Prev Month</Button>
+                        <Button variant="outline" size="sm" onClick={nextMonth}>Next Month</Button>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent className="p-6">
-                {isLoading ? (
+                {rLoading ? (
                     <div className="h-48 bg-muted animate-pulse rounded-xl"></div>
                 ) : (
                     <div className="grid grid-cols-7 gap-2">

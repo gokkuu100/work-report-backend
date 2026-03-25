@@ -41,20 +41,18 @@ def create_report(
         status=report_in.status,
         is_late=is_late
     )
+    
+    if hasattr(report_in, 'attachments') and report_in.attachments:
+        report.attachments = [
+            Attachment(
+                file_url=att.file_url,
+                file_name=att.file_name
+            ) for att in report_in.attachments
+        ]
+
     db.add(report)
     db.commit()
     db.refresh(report)
-
-    if hasattr(report_in, 'attachments') and report_in.attachments:
-        for att in report_in.attachments:
-            db_att = Attachment(
-                report_id=report.id,
-                file_url=att.file_url,
-                file_name=att.file_name
-            )
-            db.add(db_att)
-        db.commit()
-        db.refresh(report)
 
     return report
 
@@ -112,3 +110,24 @@ def update_report(
     db.commit()
     db.refresh(report)
     return report
+
+@router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+        
+    # Allow users to delete their own report ONLY if it's from today (to fix mistakes)
+    if report.user_id == current_user.id:
+        if report.date != date.today():
+             raise HTTPException(status_code=400, detail="Can only delete today's report.")
+    elif current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Not enough privileges")
+
+    db.delete(report)
+    db.commit()
+    return None

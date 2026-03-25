@@ -3,11 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { Clock, FileText, CheckCircle2, AlertTriangle, Paperclip, X, Download } from 'lucide-react';
 
 export default function MyReports() {
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [dateFilter, setDateFilter] = useState(format(new Date(), 'yyyy-MM'));
 
   const { data: reports, isLoading } = useQuery({
     queryKey: ['my-reports'],
@@ -17,7 +19,7 @@ export default function MyReports() {
     }
   });
 
-  const downloadAttachment = async (fileKey: string, fileName: string) => {
+  const downloadAttachment = async (fileKey: string) => {
     try {
       const res = await api.get(`/uploads/presigned-url/get?file_key=${encodeURIComponent(fileKey)}`);
       if (res.data?.url) {
@@ -29,10 +31,20 @@ export default function MyReports() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in py-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">My Reports</h1>
-        <p className="text-muted-foreground text-sm">Review all your past submissions and performance.</p>
+    <div className="space-y-6 animate-in fade-in">
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">My Reports</h1>
+          <p className="text-muted-foreground text-sm">Review all your past submissions and performance.</p>
+        </div>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+            <Input 
+                type="month" 
+                className="w-full md:w-40 bg-white"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+            />
+        </div>
       </div>
       
       {isLoading ? (
@@ -49,7 +61,7 @@ export default function MyReports() {
               </div>
           )}
           
-          {reports?.map((r: any) => (
+          {reports?.filter((r: any) => !dateFilter || format(new Date(r.date), 'yyyy-MM').startsWith(dateFilter)).map((r: any) => (
              <Card 
                 key={r.id} 
                 className="group cursor-pointer hover:border-primary/40 hover:shadow-md transition-all duration-200"
@@ -79,7 +91,7 @@ export default function MyReports() {
                     <div className="flex items-center justify-between text-xs font-medium text-muted-foreground pt-2 border-t border-border/40">
                         <div className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {format(new Date(r.created_at), 'h:mm a')}
+                            {format(new Date(r.created_at + 'Z'), 'h:mm a')}
                         </div>
                         {r.attachments && r.attachments.length > 0 && (
                             <div className="flex items-center gap-1 text-primary">
@@ -106,9 +118,33 @@ export default function MyReports() {
                              <span className="text-[10px] px-2 py-0.5 rounded bg-green-100 text-green-700 uppercase font-bold tracking-wider">On-Time</span>
                         )}
                     </div>
-                    <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setSelectedReport(null)}>
-                        <X className="w-5 h-5 text-muted-foreground" />
-                    </Button>
+                    
+                    <div className="flex items-center gap-2">
+                        {format(new Date(), 'yyyy-MM-dd') === selectedReport.date && (
+                             <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                onClick={async () => {
+                                    if(confirm("Are you sure you want to delete this report? This cannot be undone.")) {
+                                        try {
+                                            await api.delete(`/reports/${selectedReport.id}`);
+                                            setSelectedReport(null);
+                                            // Trigger refresh (simple reload for now or query invalidation)
+                                            window.location.reload(); 
+                                        } catch(e) {
+                                            alert("Failed to delete report.");
+                                        }
+                                    }
+                                }}
+                            >
+                                Delete
+                            </Button>
+                        )}
+
+                        <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setSelectedReport(null)}>
+                            <X className="w-5 h-5 text-muted-foreground" />
+                        </Button>
+                    </div>
                 </div>
                 
                 <div className="p-6 space-y-8">
@@ -141,7 +177,7 @@ export default function MyReports() {
                                 {selectedReport.attachments.map((att: any) => (
                                     <button 
                                         key={att.id} 
-                                        onClick={() => downloadAttachment(att.file_url, att.file_name)}
+                                        onClick={() => downloadAttachment(att.file_url)}
                                         className="flex items-center justify-between p-3 rounded-xl border bg-muted/10 hover:bg-muted/30 transition-colors text-left group"
                                     >
                                         <div className="flex items-center gap-3 overflow-hidden">
@@ -158,7 +194,7 @@ export default function MyReports() {
                     )}
                     
                     <div className="pt-4 border-t flex justify-between items-center text-xs text-muted-foreground">
-                        <span>Submitted at {format(new Date(selectedReport.created_at), 'hh:mm:ss a')}</span>
+                        <span>Submitted at {format(new Date(selectedReport.created_at + 'Z'), 'hh:mm:ss a')}</span>
                         <span>ID: #{selectedReport.id}</span>
                     </div>
                 </div>

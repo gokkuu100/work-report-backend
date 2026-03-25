@@ -1,5 +1,6 @@
 import { Menu } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
+import logo from '@/assets/yasianlogo.png';
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -18,9 +19,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
           <Menu size={20} />
         </button>
         <div className="md:hidden flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-white font-bold text-sm">W</span>
-            </div>
+            <img src={logo} alt="Yasian Logo" className="h-8 object-contain" />
         </div>
       </div>
       

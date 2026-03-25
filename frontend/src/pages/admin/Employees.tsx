@@ -39,9 +39,12 @@ export default function Employees() {
   });
 
   return (
-    <div className="space-y-6 pt-4 animate-in fade-in">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Employees</h1>
+    <div className="space-y-6 animate-in fade-in">
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Employees</h1>
+          <p className="text-muted-foreground text-sm">Manage user accounts and system access.</p>
+        </div>
         <Button onClick={() => setIsFormOpen(!isFormOpen)}>Add Employee</Button>
       </div>
       

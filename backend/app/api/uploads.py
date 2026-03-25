@@ -18,13 +18,17 @@ class PresignedUrlResponse(BaseModel):
     url: str
     file_key: str
 
-def get_s3_client():
+def get_s3_client(use_public_endpoint=False):
+    endpoint = settings.MINIO_ENDPOINT
+    if use_public_endpoint and settings.MINIO_PUBLIC_ENDPOINT:
+        endpoint = settings.MINIO_PUBLIC_ENDPOINT
+
     return boto3.client(
         's3',
-        endpoint_url=f"http://{settings.MINIO_ENDPOINT}",
+        endpoint_url=f"http://{endpoint}",
         aws_access_key_id=settings.MINIO_ACCESS_KEY,
         aws_secret_access_key=settings.MINIO_SECRET_KEY,
-        config=Config(signature_version='s3v4'),
+        config=Config(signature_version='s3v4', s3={'addressing_style': 'path'}),
         region_name='us-east-1'
     )
 
@@ -46,7 +50,8 @@ def generate_presigned_url(
     file_key = f"{current_user.id}/{uuid.uuid4()}.{file_extension}"
     
     try:
-        response = s3_client.generate_presigned_url(
+        signing_client = get_s3_client(use_public_endpoint=True)
+        response = signing_client.generate_presigned_url(
             'put_object',
             Params={
                 'Bucket': settings.MINIO_BUCKET_NAME,
@@ -55,6 +60,7 @@ def generate_presigned_url(
             },
             ExpiresIn=3600
         )
+            
     except ClientError as e:
         raise HTTPException(status_code=500, detail="Could not generate presigned URL")
         
@@ -65,7 +71,7 @@ def get_presigned_url(
     file_key: str,
     current_user: User = Depends(get_current_active_user)
 ):
-    s3_client = get_s3_client()
+    s3_client = get_s3_client(use_public_endpoint=True)
     try:
         response = s3_client.generate_presigned_url(
             'get_object',

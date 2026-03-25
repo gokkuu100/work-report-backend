@@ -69,11 +69,13 @@ export default function DailyReport() {
         });
         const { url, file_key } = res.data;
         
-        await fetch(url, {
+        const uploadRes = await fetch(url, {
              method: 'PUT',
              body: file,
              headers: { 'Content-Type': file.type || 'application/octet-stream' }
         });
+
+        if (!uploadRes.ok) throw new Error(`Failed to upload ${file.name}`);
 
         uploadedAttachments.push({ file_url: file_key, file_name: file.name });
         currentIdx++;
@@ -87,7 +89,14 @@ export default function DailyReport() {
       });
       navigate('/reports');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to submit report. You may have already submitted today.');
+      console.error(err);
+      if (err.message && err.message.includes('Network Error')) {
+         setError('Network error: Unable to reach the server. Please check your connection.');
+      } else if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+         setError('Network error: Unable to upload attachment. Check if the storage service is reachable.');
+      } else {
+         setError(err.response?.data?.detail || 'Failed to submit report. You may have already submitted today.');
+      }
     } finally {
       setLoading(false);
       setUploadProgress('');
@@ -95,7 +104,7 @@ export default function DailyReport() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in py-6">
+    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Daily Report</h1>
         <p className="text-muted-foreground text-sm">Submit your daily activities for {format(new Date(), 'EEEE, MMMM do yyyy')}</p>

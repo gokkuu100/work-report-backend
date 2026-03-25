@@ -5,3 +5,5 @@ from app.models.attachment import Attachment
 from app.models.complaint import Complaint
 from app.models.notification import Notification
 from app.models.system_setting import SystemSetting
+from app.models.survey import SurveyResponse
+from app.models.notification_read import NotificationReadTracker

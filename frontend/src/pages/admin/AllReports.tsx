@@ -5,16 +5,19 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { AlertTriangle, CheckCircle2, FileText, Paperclip, Clock, X, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function AllReports() {
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState(format(new Date(), 'yyyy-MM'));
 
   const { data: reports, isLoading: rLoading } = useQuery({ queryKey: ['reports'], queryFn: async () => (await api.get('/reports/')).data });
   const { data: users, isLoading: uLoading } = useQuery({ queryKey: ['users'], queryFn: async () => (await api.get('/users/')).data });
 
   const getUserName = (id: number) => users?.find((u:any) => u.id === id)?.name || 'Unknown Employee';
 
-  const downloadAttachment = async (fileKey: string, fileName: string) => {
+  const downloadAttachment = async (fileKey: string) => {
     try {
       const res = await api.get(`/uploads/presigned-url/get?file_key=${encodeURIComponent(fileKey)}`);
       if (res.data?.url) {
@@ -25,11 +28,34 @@ export default function AllReports() {
     }
   };
 
+  const filteredReports = reports?.filter((r: any) => {
+      const uName = getUserName(r.user_id).toLowerCase();
+      const matchesSearch = uName.includes(searchTerm.toLowerCase());
+      const matchesDate = !dateFilter || r.date.startsWith(dateFilter);
+      return matchesSearch && matchesDate;
+  }) || [];
+
   return (
-    <div className="space-y-8 animate-in fade-in py-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">All Submissions</h1>
-        <p className="text-muted-foreground text-sm">Monitor daily activity reports from all employees across the company.</p>
+    <div className="space-y-6 animate-in fade-in">
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">All Submissions</h1>
+          <p className="text-muted-foreground text-sm">Monitor daily activity reports from all employees across the company.</p>
+        </div>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+            <Input 
+                placeholder="Search employee..." 
+                className="w-full md:w-64 bg-white"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Input 
+                type="month" 
+                className="w-full md:w-40 bg-white"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+            />
+        </div>
       </div>
 
       {rLoading || uLoading ? (
@@ -39,14 +65,14 @@ export default function AllReports() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {reports?.length === 0 && (
+          {filteredReports.length === 0 && (
               <div className="col-span-full py-12 text-center bg-muted/20 border border-dashed rounded-xl">
                   <FileText className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground text-sm font-medium">No reports have been submitted yet.</p>
+                  <p className="text-muted-foreground text-sm font-medium">No reports found matching criteria.</p>
               </div>
           )}
           
-          {reports?.map((r: any) => (
+          {filteredReports.map((r: any) => (
              <Card 
                 key={r.id} 
                 className="group cursor-pointer hover:border-primary/40 hover:shadow-md transition-all duration-200"
@@ -81,7 +107,7 @@ export default function AllReports() {
                     <div className="flex items-center justify-between text-xs font-medium text-muted-foreground pt-2 border-t border-border/40">
                         <div className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {format(new Date(r.created_at), 'h:mm a')}
+                            {format(new Date(r.created_at + 'Z'), 'h:mm a')}
                         </div>
                         {r.attachments && r.attachments.length > 0 && (
                             <div className="flex items-center gap-1 text-primary">
@@ -146,7 +172,7 @@ export default function AllReports() {
                                 {selectedReport.attachments.map((att: any) => (
                                     <button 
                                         key={att.id} 
-                                        onClick={() => downloadAttachment(att.file_url, att.file_name)}
+                                        onClick={() => downloadAttachment(att.file_url)}
                                         className="flex items-center justify-between p-3 rounded-xl border bg-muted/10 hover:bg-muted/30 transition-colors text-left group"
                                     >
                                         <div className="flex items-center gap-3 overflow-hidden">
@@ -163,7 +189,7 @@ export default function AllReports() {
                     )}
                     
                     <div className="pt-4 border-t flex justify-between items-center text-xs text-muted-foreground">
-                        <span>Submitted at {format(new Date(selectedReport.created_at), 'hh:mm:ss a')}</span>
+                        <span>Submitted at {format(new Date(selectedReport.created_at + 'Z'), 'hh:mm:ss a')}</span>
                         <span>Report ID: #{selectedReport.id}</span>
                     </div>
                 </div>
