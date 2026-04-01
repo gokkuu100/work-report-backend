@@ -10,15 +10,25 @@ from app.schemas.notification import NotificationCreate, NotificationRead
 
 router = APIRouter()
 
-@router.post("/", response_model=NotificationRead, dependencies=[Depends(get_current_admin_user)])
-def create_notification(notif: NotificationCreate, db: Session = Depends(get_db)):
+@router.post("/", response_model=NotificationRead)
+def create_notification(notif: NotificationCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    from app.models.user import RoleEnum
+    if current_user.role != RoleEnum.admin and not current_user.is_department_head:
+        raise HTTPException(status_code=403, detail="Not enough privileges")
+    if current_user.role != RoleEnum.admin:
+        if notif.target_type != TargetType.department or notif.department_id != current_user.department_id:
+            raise HTTPException(status_code=403, detail="Department heads can only send alerts to their own department")
     if notif.target_type == TargetType.user and not notif.user_id:
         raise HTTPException(status_code=400, detail="user_id is required when target_type is user")
+    if notif.target_type == TargetType.department and not notif.department_id:
+        raise HTTPException(status_code=400, detail="department_id is required when target_type is department")
         
     db_notif = Notification(
         message=notif.message,
         target_type=notif.target_type,
-        user_id=notif.user_id
+        user_id=notif.user_id,
+        department_id=notif.department_id,
+        sender_id=current_user.id
     )
     db.add(db_notif)
     db.commit()
@@ -40,9 +50,11 @@ def get_my_notifications(db: Session = Depends(get_db), current_user: User = Dep
     return db.query(Notification).filter(
         or_(
             Notification.target_type == TargetType.all,
-            and_(Notification.target_type == TargetType.user, Notification.user_id == current_user.id)
+            and_(Notification.target_type == TargetType.user, Notification.user_id == current_user.id),
+            and_(Notification.target_type == TargetType.department, Notification.department_id == current_user.department_id)
         ),
-        ~Notification.id.in_(read_notif_ids)
+        ~Notification.id.in_(read_notif_ids),
+        Notification.created_at >= current_user.created_at
     ).order_by(Notification.created_at.desc()).all()
 
 @router.post("/{notification_id}/read")

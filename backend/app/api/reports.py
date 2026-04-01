@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from app.db.database import get_db
 from app.models.user import User, RoleEnum
 from app.models.report import Report, ReportStatus
@@ -19,9 +19,29 @@ def create_report(
     current_user: User = Depends(get_current_active_user)
 ):
     today = date.today()
-    existing = db.query(Report).filter(Report.user_id == current_user.id, Report.date == today).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Report for today already exists")
+    
+    is_weekly = False
+    if current_user.department:
+        dept_name = (current_user.department.name or "").lower()
+        if "hr" in dept_name or "admin" in dept_name or "procurement" in dept_name:
+            is_weekly = True
+
+    if is_weekly:
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+        existing = db.query(Report).filter(
+            Report.user_id == current_user.id,
+            Report.date >= start_of_week,
+            Report.date <= end_of_week
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="A report for this week already exists. Weekly report limit reached.")
+    else:
+        if today.weekday() == 6:
+            raise HTTPException(status_code=400, detail="Daily reports cannot be submitted on Sundays.")
+        existing = db.query(Report).filter(Report.user_id == current_user.id, Report.date == today).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Report for today already exists.")
     
     is_late = False
     cutoff_setting = db.query(SystemSetting).filter(SystemSetting.key == "report_cutoff_time").first()
@@ -70,6 +90,21 @@ def read_all_reports(
     current_admin: User = Depends(get_current_admin_user)
 ):
     reports = db.query(Report).order_by(Report.date.desc()).all()
+    return reports
+
+@router.get("/department", response_model=List[ReportRead])
+def read_department_reports(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    if not current_user.is_department_head and current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Not enough privileges")
+    if current_user.department_id is None:
+        raise HTTPException(status_code=400, detail="User not assigned to a department")
+        
+    reports = db.query(Report).join(User, Report.user_id == User.id).filter(
+        User.department_id == current_user.department_id
+    ).order_by(Report.date.desc()).all()
     return reports
 
 @router.get("/{report_id}", response_model=ReportRead)

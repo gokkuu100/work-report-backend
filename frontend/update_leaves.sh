@@ -1,0 +1,1 @@
+sed -i "s/import { useState } from 'react';/import { useState } from 'react';\nimport { useAuthStore } from '@\/store\/auth';\nimport { Tabs, TabsContent, TabsList, TabsTrigger } from '@\/components\/ui\/tabs';/g" /home/prince/Documents/yasian-dev/work-report-system/frontend/src/pages/admin/Leaves.tsx

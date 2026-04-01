@@ -15,6 +15,7 @@ const formSchema = z.object({
   title: z.string().min(5),
   description: z.string().min(10),
   priority: z.enum(['low', 'medium', 'high']),
+  target_level: z.enum(['company', 'department']),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -33,7 +34,7 @@ export default function Complaints() {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { priority: 'medium' }
+    defaultValues: { priority: 'medium', target_level: 'company' }
   });
 
   const mutation = useMutation({
@@ -88,17 +89,30 @@ export default function Complaints() {
                         {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="priority">Priority</Label>
-                        <select 
-                            id="priority" 
-                            {...register('priority')}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                        >
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                        </select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="priority">Priority</Label>
+                            <select 
+                                id="priority" 
+                                {...register('priority')}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                            >
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="target_level">Target Audience</Label>
+                            <select 
+                                id="target_level" 
+                                {...register('target_level')}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                            >
+                                <option value="company">Entire Company (Admin only)</option>
+                                <option value="department">My Department (Dept Head & Admin)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4">
@@ -113,34 +127,32 @@ export default function Complaints() {
       {isLoading ? (
         <div>Loading...</div>
       ) : (
-        <div className="grid gap-4">
-          {complaints?.length === 0 && <p className="text-muted-foreground text-sm">No complaints found.</p>}
-          {complaints?.map((c: any) => (
-             <Card key={c.id}>
-                <CardHeader>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <CardTitle className="text-lg">{c.title}</CardTitle>
-                            <p className="text-xs text-muted-foreground mt-1">{format(new Date(c.created_at + 'Z'), 'PPP p')}</p>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                                {(() => {
-                                  const s = c.status;
-                                  if (s === 'resolved') return <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 uppercase font-bold">Resolved</span>;
-                                  if (s === 'in_review') return <span className="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700 uppercase font-bold">In Review</span>;
-                                  if (s === 'closed') return <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground uppercase font-bold">Closed</span>;
-                                  return <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 uppercase font-bold">Open</span>;
-                                })()}
-                            <span className={`text-xs px-2 py-1 rounded capitalize font-medium ${c.priority === 'high' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{c.priority} priority</span>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{c.description}</p>
-                </CardContent>
-             </Card>
-          ))}
-        </div>
+        <Card>
+            <CardContent className="p-0">
+               <div className="divide-y max-h-[700px] overflow-y-auto">
+                   {complaints?.length === 0 && <p className="text-muted-foreground text-sm p-8 text-center">No complaints found.</p>}
+                   {complaints?.map((c: any) => (
+                       <div key={c.id} className="p-6 hover:bg-muted/10 transition-colors">
+                           <div className="flex justify-between items-start mb-4">
+                               <div className="space-y-1">
+                                   <h3 className="font-bold text-base text-foreground flex items-center gap-2">
+                                        {c.title}
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold tracking-wider ${c.priority === 'high' ? 'bg-red-100 text-red-700' : c.priority === 'medium' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>{c.priority}</span>
+                                   </h3>
+                                   <p className="text-xs text-muted-foreground font-medium">{format(new Date(c.created_at + 'Z'), 'MMM do, yyyy h:mm a')}</p>
+                               </div>
+                               <span className={`text-[10px] px-2 py-1 rounded-full uppercase font-bold tracking-wider ${c.status === 'open' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' : c.status === 'in_progress' ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-green-100 text-green-700 border border-green-200'}`}>
+                                   {c.status.replace('_', ' ')}
+                               </span>
+                           </div>
+                           <div className="bg-background border rounded-xl p-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                               {c.description}
+                           </div>
+                       </div>
+                   ))}
+               </div>
+            </CardContent>
+        </Card>
       )}
     </div>
   );

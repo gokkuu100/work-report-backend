@@ -7,6 +7,7 @@ class NotificationBase(BaseModel):
     message: str
     target_type: TargetType
     user_id: Optional[int] = None
+    department_id: Optional[int] = None
 
 class NotificationCreate(NotificationBase):
     pass
@@ -14,6 +15,7 @@ class NotificationCreate(NotificationBase):
 class NotificationRead(NotificationBase):
     id: int
     created_at: datetime
+    sender_name: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -10,7 +10,8 @@ import {
   LogOut,
   Settings as SettingsIcon,
   Bell,
-  ClipboardList
+  ClipboardList,
+  Calendar
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
@@ -44,12 +45,26 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/report/new', icon: FileText, label: 'Daily Report' },
     { to: '/reports', icon: Files, label: 'My Reports' },
+    { to: '/leaves', icon: Calendar, label: 'Leave Applications' },
     { to: '/complaints', icon: MessageSquare, label: 'Complaints' },
     { to: '/notifications', icon: Bell, label: 'Notifications', badge: unreadCount },
   ];
 
+  if (user?.is_department_head) {
+    employeeLinks.push({ to: '/department-head', icon: Users, label: 'Dept Dashboard' });
+  }
+
+  if (user?.is_hr && !isAdmin) {
+    employeeLinks.push(
+      { to: '/admin/leaves', icon: ClipboardList, label: 'Leave applications' },
+      { to: '/admin/employees', icon: Users, label: 'Manage Employees (HR)' }
+    );
+  }
+
   const adminLinks: NavItem[] = [
     { to: '/admin', icon: LayoutDashboard, label: 'Admin Board' },
+    { to: '/admin/departments', icon: ClipboardList, label: 'Departments' },
+    { to: '/admin/leaves', icon: LogOut, label: 'Leave applications' },
     { to: '/admin/employees', icon: Users, label: 'Employees' },
     { to: '/admin/reports', icon: Files, label: 'All Reports' },
     { to: '/admin/complaints', icon: MessageSquare, label: 'All Complaints' },

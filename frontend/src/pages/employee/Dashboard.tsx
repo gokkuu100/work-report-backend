@@ -3,13 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { FileText, Files, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, XCircle, Bell } from 'lucide-react';
-import { format, isFuture, isToday } from 'date-fns';
+import { FileText, Files, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, XCircle, Bell, Palmtree } from 'lucide-react';
+import { format, isFuture, isToday, parseISO } from 'date-fns';
 import { useAuthStore } from '@/store/auth';
+import { LeaveApplicationModal } from '@/components/leaves/LeaveApplicationModal';
 
 export default function Dashboard() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   
   const { data: reports, isLoading: rLoading } = useQuery({
     queryKey: ['my-reports'],
@@ -39,6 +41,27 @@ export default function Dashboard() {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const submittedToday = reports?.some((r: any) => r.date === todayStr);
 
+  const { data: leaves } = useQuery({
+    queryKey: ['my-leaves'],
+    queryFn: async () => {
+      const { data } = await api.get('/leaves/me');
+      return data;
+    }
+  });
+
+  const isDateOnLeave = (dateObj: Date) => {
+    if (!leaves) return false;
+    return leaves.some((l: any) => {
+        if (l.hr_admin_status === 'rejected' || l.dept_head_status === 'rejected') return false;
+        const start = parseISO(l.start_date);
+        const end = parseISO(l.end_date);
+        // inclusive range check
+        return dateObj >= new Date(start.setHours(0,0,0,0)) && dateObj <= new Date(end.setHours(23,59,59,999));
+    });
+  };
+
+  const onLeaveToday = isDateOnLeave(new Date());
+
   const [currentDate, setCurrentDate] = useState(new Date());
   
   const year = currentDate.getFullYear();
@@ -53,20 +76,29 @@ export default function Dashboard() {
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
   const getDayStatus = (day: number) => {
-      const dateStr = format(new Date(year, month, day), 'yyyy-MM-dd');
+      const dateObj = new Date(year, month, day);
+      const dateStr = format(dateObj, 'yyyy-MM-dd');
       const report = reports?.find((r: any) => r.date === dateStr);
       
-      if (isFuture(new Date(year, month, day))) return 'future';
-      if (!report) return 'missed';
-      if (report.is_late) return 'late';
-      return 'on-time';
+      if (isFuture(dateObj)) return 'future';
+      if (report) {
+         if (report.is_late) return 'late';
+         return 'on-time';
+      }
+      if (isDateOnLeave(dateObj)) return 'on-leave';
+      return 'missed';
   };
 
   return (
     <div className="space-y-6 animate-in fade-in">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Welcome back, {user?.name?.split(' ')[0] || 'User'}!</h1>
-        <p className="text-muted-foreground text-sm">Here is a quick overview of your activities today.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Welcome back, {user?.name?.split(' ')[0] || 'User'}!</h1>
+          <p className="text-muted-foreground text-sm">Here is a quick overview of your activities today.</p>
+        </div>
+        <Button onClick={() => setIsLeaveModalOpen(true)} className="gap-2 shrink-0">
+            <Palmtree className="w-4 h-4" /> Apply for Leave
+        </Button>
       </div>
 
       {notifications && notifications.length > 0 && (
@@ -104,10 +136,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold mt-2 text-foreground">
-              {submittedToday ? "Submitted" : "Pending"}
+              {onLeaveToday ? "On Leave" : (submittedToday ? "Submitted" : "Pending")}
             </div>
             <p className="text-xs text-muted-foreground mt-2 font-medium">
-              {!submittedToday ? "Please submit your daily activity report." : "Awesome! You're all caught up."}
+              {onLeaveToday ? "Enjoy your time off!" : (!submittedToday ? "Please submit your daily activity report." : "Awesome! You're all caught up.")}
             </p>
           </CardContent>
         </Card>
@@ -133,6 +165,7 @@ export default function Dashboard() {
                 <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> On Time</span>
                 <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-400"></div> Late</span>
                 <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-400"></div> Missed</span>
+                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-300"></div> Leave</span>
             </div>
         </div>
 
@@ -180,6 +213,9 @@ export default function Dashboard() {
                             } else if (status === 'missed') {
                                 bgClass = "bg-red-50 text-red-500 border-red-100 hover:bg-red-100";
                                 icon = <XCircle className="w-3 h-3 absolute bottom-1 right-1 opacity-40" />;
+                            } else if (status === 'on-leave') {
+                                bgClass = "bg-blue-50 text-blue-500 border-blue-100 hover:bg-blue-100";
+                                icon = <Palmtree className="w-3 h-3 absolute bottom-1 right-1 opacity-40" />;
                             }
 
                             return (
@@ -198,6 +234,8 @@ export default function Dashboard() {
             </CardContent>
         </Card>
       </div>
+      
+      <LeaveApplicationModal isOpen={isLeaveModalOpen} onClose={() => setIsLeaveModalOpen(false)} />
     </div>
   );
 }

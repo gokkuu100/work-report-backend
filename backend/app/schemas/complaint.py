@@ -1,12 +1,13 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from app.models.complaint import ComplaintPriority, ComplaintStatus
+from app.models.complaint import ComplaintPriority, ComplaintStatus, TargetLevel
 
 class ComplaintBase(BaseModel):
     title: str
     description: str
     priority: ComplaintPriority = ComplaintPriority.medium
+    target_level: TargetLevel = TargetLevel.company
 
 class ComplaintCreate(ComplaintBase):
     pass

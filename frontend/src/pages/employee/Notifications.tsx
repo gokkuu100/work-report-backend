@@ -50,12 +50,17 @@ export default function Notifications() {
                             <Bell className="w-5 h-5 text-blue-600" />
                         </div>
                         <div className="flex-1 space-y-2 pr-10">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold tracking-wider ${n.target_type === 'all' ? 'bg-indigo-100 text-indigo-700' : 'bg-purple-100 text-purple-700'}`}>
-                                    {n.target_type === 'all' ? 'Global Announcement' : 'Personal Alert'}
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold tracking-wider ${n.target_type === 'all' ? 'bg-indigo-100 text-indigo-700' : n.target_type === 'department' ? 'bg-teal-100 text-teal-700' : 'bg-purple-100 text-purple-700'}`}>
+                                    {n.target_type === 'all' ? 'Global Announcement' : n.target_type === 'department' ? 'Department Alert' : 'Personal Alert'}
                                 </span>
+                                {n.sender_name && (
+                                   <span className="text-xs text-muted-foreground font-medium">
+                                       From: <strong className="text-foreground capitalize">{n.sender_name}</strong>
+                                   </span>
+                                )}
                                 <span className="text-xs text-muted-foreground font-medium">
-                                    {format(new Date(n.created_at + 'Z'), 'MMM do, yyyy h:mm a')}
+                                    • {format(new Date(n.created_at + 'Z'), 'MMM do, yyyy h:mm a')}
                                 </span>
                             </div>
                             <p className="text-sm font-medium leading-relaxed text-foreground whitespace-pre-wrap">{n.message}</p>

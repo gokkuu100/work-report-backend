@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
-import { Clock, FileText, CheckCircle2, AlertTriangle, Paperclip, X, Download } from 'lucide-react';
+import { FileText, AlertTriangle, Paperclip, X, Download } from 'lucide-react';
 
 export default function MyReports() {
   const [selectedReport, setSelectedReport] = useState<any>(null);
@@ -48,62 +48,46 @@ export default function MyReports() {
       </div>
       
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 animate-pulse">
-            <div className="h-44 bg-muted rounded-xl"></div>
-            <div className="h-44 bg-muted rounded-xl"></div>
+        <div className="grid gap-4 animate-pulse">
+            <div className="h-24 bg-muted rounded-xl"></div>
+            <div className="h-24 bg-muted rounded-xl"></div>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {reports?.length === 0 && (
-              <div className="col-span-full py-12 text-center bg-muted/20 border border-dashed rounded-xl">
-                  <FileText className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground text-sm font-medium">No reports found.</p>
-              </div>
-          )}
-          
-          {reports?.filter((r: any) => !dateFilter || format(new Date(r.date), 'yyyy-MM').startsWith(dateFilter)).map((r: any) => (
-             <Card 
-                key={r.id} 
-                className="group cursor-pointer hover:border-primary/40 hover:shadow-md transition-all duration-200"
-                onClick={() => setSelectedReport(r)}
-             >
-                <CardHeader className="pb-3 border-b border-border/40">
-                    <div className="flex justify-between items-center">
-                        <CardTitle className="text-base font-bold flex items-center gap-2">
-                            {format(new Date(r.date), 'MMM do, yyyy')}
-                        </CardTitle>
-                        {r.is_late ? (
-                             <span className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 uppercase font-bold tracking-wider">
-                                 <AlertTriangle className="w-3 h-3" /> Late
-                             </span>
-                        ) : (
-                             <span className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full bg-green-100 text-green-700 uppercase font-bold tracking-wider">
-                                 <CheckCircle2 className="w-3 h-3" /> On-Time
-                             </span>
-                        )}
-                    </div>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-3">
-                    <div className="line-clamp-2 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                        {r.tasks}
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-xs font-medium text-muted-foreground pt-2 border-t border-border/40">
-                        <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {format(new Date(r.created_at + 'Z'), 'h:mm a')}
-                        </div>
-                        {r.attachments && r.attachments.length > 0 && (
-                            <div className="flex items-center gap-1 text-primary">
-                                <Paperclip className="w-3 h-3" />
-                                {r.attachments.length} attached
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-             </Card>
-          ))}
-        </div>
+        <Card>
+            <CardContent className="p-0">
+               <div className="divide-y max-h-[700px] overflow-y-auto">
+                   {reports?.length === 0 && (
+                       <div className="p-12 text-center">
+                           <FileText className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
+                           <p className="text-muted-foreground text-sm font-medium">No reports found.</p>
+                       </div>
+                   )}
+                   
+                   {reports?.filter((r: any) => !dateFilter || format(new Date(r.date), 'yyyy-MM').startsWith(dateFilter)).map((r: any) => (
+                       <div key={r.id} className="p-6 hover:bg-muted/10 transition-colors cursor-pointer" onClick={() => setSelectedReport(r)}>
+                           <div className="flex justify-between items-center mb-3">
+                               <div className="flex items-center gap-3">
+                                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                       <FileText className="w-4 h-4" />
+                                   </div>
+                                   <span className="font-semibold">{format(new Date(r.date), 'MMM do, yyyy')}</span>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                  {r.is_late ? (
+                                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-bold uppercase tracking-wider">Late</span>
+                                  ) : (
+                                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold uppercase tracking-wider">On-Time</span>
+                                  )}
+                               </div>
+                           </div>
+                           <div className="bg-background border rounded-xl p-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed line-clamp-2">
+                               {r.tasks}
+                           </div>
+                       </div>
+                   ))}
+               </div>
+            </CardContent>
+        </Card>
       )}
 
       {selectedReport && (

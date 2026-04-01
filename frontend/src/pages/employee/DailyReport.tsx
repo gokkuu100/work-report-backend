@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useAuthStore } from '@/store/auth';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -18,6 +19,10 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export default function DailyReport() {
+  const { user } = useAuthStore();
+  const isWeeklyReporter = user?.department?.name === 'HR' || user?.department?.name === 'Admin / Procurement' || user?.is_hr;
+  const isSaturday = new Date().getDay() === 6;
+
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -106,10 +111,18 @@ export default function DailyReport() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in">
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Daily Report</h1>
-        <p className="text-muted-foreground text-sm">Submit your daily activities for {format(new Date(), 'EEEE, MMMM do yyyy')}</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">{isWeeklyReporter ? 'Weekly Report' : 'Daily Report'}</h1>
+        <p className="text-muted-foreground text-sm">Submit your {isWeeklyReporter ? 'weekly' : 'daily'} activities for {format(new Date(), 'EEEE, MMMM do yyyy')}</p>
       </div>
       
+      {isWeeklyReporter && !isSaturday ? (
+          <Card className="shadow-sm border-amber-200 bg-amber-50/50">
+              <CardContent className="p-8 text-center text-amber-700 font-medium">
+                  HR and Admin/Procurement departments submit weekly reports on Saturdays only.
+                  <br />Please return on Saturday to submit your weekly report.
+              </CardContent>
+          </Card>
+      ) : (
       <Card className="shadow-sm">
         <CardContent className="p-8">
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
@@ -192,6 +205,7 @@ export default function DailyReport() {
           </form>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

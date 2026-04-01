@@ -7,6 +7,10 @@ interface User {
   email: string;
   role: 'admin' | 'employee';
   status: 'active' | 'suspended';
+  department_id?: number | null;
+  department?: { name: string };
+  is_department_head?: boolean;
+  is_hr?: boolean;
 }
 
 interface AuthState {

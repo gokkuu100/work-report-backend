@@ -1,5 +1,7 @@
 from app.db.database import Base
 from app.models.user import User
+from app.models.department import Department
+from app.models.leave import Leave
 from app.models.report import Report
 from app.models.attachment import Attachment
 from app.models.complaint import Complaint

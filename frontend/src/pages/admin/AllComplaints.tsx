@@ -62,7 +62,12 @@ export default function AllComplaints() {
                 <CardHeader>
                     <div className="flex justify-between items-start">
                         <div>
-                            <CardTitle className="text-lg">{c.title}</CardTitle>
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-lg">{c.title}</CardTitle>
+                                {users?.find((u: any) => u.id === c.user_id)?.is_department_head && (
+                                    <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Dept Head</span>
+                                )}
+                            </div>
                             <p className="text-xs text-muted-foreground mt-1">From: {getUserName(c.user_id)} • {format(new Date(c.created_at + 'Z'), 'PPP p')}</p>
                         </div>
                         <div className="flex flex-col items-end gap-2">

@@ -10,7 +10,8 @@ import { format } from 'date-fns';
 
 export default function SendNotification() {
   const queryClient = useQueryClient();
-  const [targetUserId, setTargetUserId] = useState<string>('all');
+  const [targetType, setTargetType] = useState<'all' | 'user' | 'department'>('all');
+  const [targetId, setTargetId] = useState<string>('');
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -20,6 +21,11 @@ export default function SendNotification() {
       queryFn: async () => (await api.get('/users/')).data 
   });
 
+  const { data: departments } = useQuery({
+      queryKey: ['departments'],
+      queryFn: async () => (await api.get('/departments/')).data
+  });
+
   const { data: notifications, isLoading } = useQuery({
       queryKey: ['notifications-admin'],
       queryFn: async () => (await api.get('/notifications/')).data
@@ -27,11 +33,13 @@ export default function SendNotification() {
 
   const sendMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const payload: any = {
           message,
-          target_type: targetUserId === 'all' ? 'all' : 'user',
-          user_id: targetUserId === 'all' ? null : parseInt(targetUserId)
+          target_type: targetType,
       };
+      if (targetType === 'user') payload.user_id = parseInt(targetId);
+      if (targetType === 'department') payload.department_id = parseInt(targetId);
+
       const { data } = await api.post('/notifications/', payload);
       return data;
     },
@@ -50,6 +58,10 @@ export default function SendNotification() {
 
   const handleSend = () => {
     if (!message.trim()) return;
+    if (targetType !== 'all' && !targetId) {
+        setError('Please select a target.');
+        return;
+    }
     sendMutation.mutate();
   };
 
@@ -71,19 +83,39 @@ export default function SendNotification() {
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="space-y-3">
-                <Label htmlFor="targetUser" className="text-base font-semibold">Target Audience</Label>
+                <Label className="text-base font-semibold">Target Audience Type</Label>
                 <select
-                    id="targetUser"
-                    value={targetUserId}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTargetUserId(e.target.value)}
+                    value={targetType}
+                    onChange={(e: any) => { setTargetType(e.target.value); setTargetId(''); }}
                     className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <option value="all">All Employees Globally</option>
-                    {users?.filter((u: any) => u.role !== 'admin').map((u: any) => (
-                        <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-                    ))}
+                    <option value="department">Specific Department</option>
+                    <option value="user">Specific User</option>
                 </select>
               </div>
+
+              {targetType === 'department' && (
+                  <div className="space-y-3">
+                    <Label>Select Department</Label>
+                    <select value={targetId} onChange={e => setTargetId(e.target.value)} className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value="">-- Choose Department --</option>
+                        {departments?.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+              )}
+
+              {targetType === 'user' && (
+                  <div className="space-y-3">
+                    <Label>Select User</Label>
+                    <select value={targetId} onChange={e => setTargetId(e.target.value)} className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value="">-- Choose User --</option>
+                        {users?.filter((u: any) => u.role !== 'admin').map((u: any) => (
+                            <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                        ))}
+                    </select>
+                  </div>
+              )}
     
               <div className="space-y-3">
                 <Label htmlFor="message" className="text-base font-semibold">Message Content</Label>
@@ -128,8 +160,8 @@ export default function SendNotification() {
               {notifications.map((n: any) => (
                 <div key={n.id} className="p-4 hover:bg-muted/10 transition-colors">
                     <div className="flex justify-between items-start mb-2">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold tracking-wider ${n.target_type === 'all' ? 'bg-primary/10 text-primary' : 'bg-indigo-100 text-indigo-700'}`}>
-                            {n.target_type === 'all' ? 'Globally Sent' : `To: ${getUserName(n.user_id)}`}
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold tracking-wider ${n.target_type === 'all' ? 'bg-primary/10 text-primary' : n.target_type === 'department' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                            {n.target_type === 'all' ? 'Globally Sent' : n.target_type === 'department' ? `Dept: ${departments?.find((d:any) => d.id === n.department_id)?.name || n.department_id}` : `To: ${getUserName(n.user_id)}`}
                         </span>
                         <span className="text-xs text-muted-foreground font-medium">{format(new Date(n.created_at + 'Z'), 'MMM do, h:mm a')}</span>
                     </div>
