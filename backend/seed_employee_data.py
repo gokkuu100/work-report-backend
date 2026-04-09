@@ -1,8 +1,54 @@
 import csv
-import os
-from sqlalchemy.orm import Session
+import re
+from sqlalchemy import func
 from app.db.database import SessionLocal
 from app.models.user import User
+from app.models.department import Department
+from app.models.user import RoleEnum
+from app.core.security import get_password_hash
+
+DEFAULT_PASSWORD = "admin123"
+DEFAULT_EMAIL_DOMAIN = "company.com"
+
+
+def _normalize(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", value.lower())
+
+
+def _build_base_email(name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", ".", name.lower()).strip(".")
+    return f"{slug or 'employee'}@{DEFAULT_EMAIL_DOMAIN}"
+
+
+def _build_unique_email(db, name: str) -> str:
+    base_email = _build_base_email(name)
+    candidate = base_email
+    local, domain = base_email.split("@", 1)
+    counter = 1
+    while db.query(User).filter(func.lower(User.email) == candidate.lower()).first():
+        counter += 1
+        candidate = f"{local}{counter}@{domain}"
+    return candidate
+
+
+def _resolve_department_id(db, department_name: str):
+    if not department_name:
+        return None
+
+    normalized_csv = _normalize(department_name)
+    if not normalized_csv:
+        return None
+
+    departments = db.query(Department).all()
+    for dept in departments:
+        normalized_dept = _normalize(dept.name or "")
+        if not normalized_dept:
+            continue
+        if normalized_csv == normalized_dept:
+            return dept.id
+        if normalized_csv in normalized_dept or normalized_dept in normalized_csv:
+            return dept.id
+    return None
 
 def load_data():
     db = SessionLocal()
@@ -16,13 +62,22 @@ def load_data():
                 continue
             
             name = row[2].strip()
-            user = db.query(User).filter(User.name.ilike(f"%{name}%")).first()
+            user = db.query(User).filter(func.lower(User.name) == name.lower()).first()
             if not user:
-                print(f"User {name} not found in DB, skipping or add logic to create")
-                continue
+                user = User(
+                    name=name,
+                    email=_build_unique_email(db, name),
+                    password_hash=get_password_hash(DEFAULT_PASSWORD),
+                    role=RoleEnum.employee,
+                )
+                db.add(user)
+                db.flush()
+                print(f"Created {name}")
             
             user.staff_no = row[1].strip().zfill(3) if row[1].strip() else None
             user.job_title = row[3].strip() if row[3].strip() else None
+            department_name = row[4].strip() if len(row) > 4 and row[4].strip() else ""
+            user.department_id = _resolve_department_id(db, department_name)
             user.work_place = row[5].strip() if row[5].strip() else None
             user.phone_number = row[6].strip() if row[6].strip() else None
             user.next_of_kin = row[7].strip() if row[7].strip() else None
