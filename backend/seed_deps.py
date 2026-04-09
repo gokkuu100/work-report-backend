@@ -52,6 +52,7 @@ def seed_departments():
         db.add(Department(name=d, description=f"{d} Department"))
         print(f"Added {d}")
         
+        
     db.commit()
     db.close()
     print("Departments seeded successfully.")
