@@ -1,6 +1,9 @@
 import csv
 import re
+from pathlib import Path
+from typing import Optional
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.user import User
 from app.models.department import Department
@@ -9,6 +12,7 @@ from app.core.security import get_password_hash
 
 DEFAULT_PASSWORD = "admin123"
 DEFAULT_EMAIL_DOMAIN = "company.com"
+DEFAULT_CSV_FILE = "yasian employees sheet 2 - Yasian employees.csv"
 
 
 def _normalize(value: str) -> str:
@@ -50,9 +54,12 @@ def _resolve_department_id(db, department_name: str):
             return dept.id
     return None
 
-def load_data():
-    db = SessionLocal()
-    with open("yasian employees sheet 2 - Yasian employees.csv", "r", encoding="utf-8-sig") as f:
+def load_data(db: Optional[Session] = None, csv_path: Optional[str] = None):
+    created_local_session = db is None
+    db = db or SessionLocal()
+
+    resolved_path = Path(csv_path) if csv_path else Path(__file__).parent / DEFAULT_CSV_FILE
+    with open(resolved_path, "r", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         header = next(reader)
         # ['', 'Staff No', 'Name', 'Job Title', 'Department', 'Work Place', 'Tel. Number', 'Next of Kin', 'Tel.Number', 'Emp. Date', 'Emp. Duration', 'ID', 'Employee with computer']
@@ -93,7 +100,8 @@ def load_data():
             print(f"Updated {name}")
     
     db.commit()
-    db.close()
+    if created_local_session:
+        db.close()
 
 if __name__ == "__main__":
     load_data()
